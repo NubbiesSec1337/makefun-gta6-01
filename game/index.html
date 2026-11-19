@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palm City Heat — an open-world crime game</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23ff7a1a'/%3E%3Ctext x='16' y='22' font-size='18' text-anchor='middle' fill='%23121212' font-family='sans-serif' font-weight='bold'%3EP%3C/text%3E%3C/svg%3E">
+<style>
+  *{ box-sizing:border-box;margin:0;padding:0;}
+  html,body{ width:100%;height:100%;overflow:hidden;background:#101418;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;color:#f2f2f2;}
+  #game{ position:fixed;inset:0;width:100%;height:100%;display:block;}
+  .hud{ position:fixed;z-index:5;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.8);}
+  #top-right{ top:14px;right:16px;text-align:right;}
+  #cash{ font-size:30px;font-weight:800;color:#7ddc7d;letter-spacing:.5px;}
+  #stars{ font-size:22px;letter-spacing:3px;color:#ffd23f;}
+  #stars.hot{ animation:pulse .5s infinite alternate;}
+  @keyframes pulse{ from{ opacity:.65;} to{ opacity:1;} }
+  #health{ width:190px;height:10px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.35);border-radius:5px;margin-top:6px;overflow:hidden;}
+  #health-fill{ height:100%;width:100%;background:#3aa84f;}
+  #top-left{ top:14px;left:16px;max-width:430px;}
+  #mission-title{ font-size:20px;font-weight:800;color:#ffd23f;}
+  #objective{ font-size:14px;margin-top:4px;line-height:1.4;color:#e8e8e8;}
+  #speed{ position:fixed;right:16px;bottom:18px;font-size:26px;font-weight:800;}
+  #ammo{ position:fixed;right:16px;bottom:56px;font-size:16px;font-weight:700;color:#e8e8e8;}
+  #minimap{ position:fixed;left:16px;bottom:16px;width:180px;height:180px;border:2px solid rgba(255,255,255,.45);border-radius:50%;background:#2a332a;z-index:5;}
+  #msg{ position:fixed;left:50%;bottom:120px;transform:translateX(-50%);max-width:640px;text-align:center;font-size:17px;font-weight:600;background:rgba(0,0,0,.62);border-radius:8px;padding:10px 16px;opacity:0;transition:opacity .3s;z-index:6;pointer-events:none;line-height:1.45;}
+  #msg.show{ opacity:1;}
+  #prompt{ position:fixed;left:50%;bottom:64px;transform:translateX(-50%);font-size:15px;font-weight:700;background:rgba(0,0,0,.55);border-radius:6px;padding:7px 12px;opacity:0;transition:opacity .2s;z-index:6;pointer-events:none;}
+  #prompt.show{ opacity:1;}
+  #crosshair{ position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;z-index:5;opacity:0;pointer-events:none;}
+  #crosshair.show{ opacity:.9;}
+  #crosshair::before,#crosshair::after{ content:"";position:absolute;background:#fff;box-shadow:0 0 3px #000;}
+  #crosshair::before{ left:6px;top:0;width:2px;height:14px;}
+  #crosshair::after{ left:0;top:6px;width:14px;height:2px;}
+  #radio{ margin-top:4px;font-size:14px;font-weight:700;color:#ffd23f;}
+  #hero{ margin-top:2px;font-size:14px;font-weight:700;}
+  #phone{ position:fixed;right:16px;top:110px;width:300px;max-height:480px;overflow:auto;background:rgba(10,14,22,.92);border:2px solid #ff6ad8;border-radius:14px;z-index:8;padding:12px;pointer-events:auto;}
+  #phone.hidden{ display:none;}
+  #phone h3{ color:#ff6ad8;font-size:16px;letter-spacing:1px;margin-bottom:6px;}
+  .post{ border-top:1px solid rgba(255,255,255,.15);padding:8px 0;font-size:13.5px;line-height:1.4;}
+  .post b{ color:#6ac2ff;display:block;}
+  .post i{ display:block;color:#ff8ad8;font-style:normal;margin-top:2px;font-size:12px;}
+  .overlay{ position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(160deg,rgba(10,14,22,.82),rgba(40,16,4,.78));padding:24px;}
+  .overlay.hidden{ display:none;}
+  .overlay h1{ font-size:64px;font-weight:900;letter-spacing:2px;color:#ff7a1a;text-shadow:0 4px 0 #7a2c00,0 8px 24px rgba(0,0,0,.7);}
+  .overlay h1 .heat{ color:#ffd23f;}
+  .overlay h2{ font-size:34px;font-weight:900;letter-spacing:1px;color:#ffd23f;text-shadow:0 3px 0 #5a3a00,0 6px 18px rgba(0,0,0,.7);}
+  .tagline{ margin-top:10px;font-size:17px;color:#d8d8d8;max-width:560px;line-height:1.5;}
+  .story{ margin-top:14px;font-size:15px;color:#bdbdbd;max-width:560px;line-height:1.55;font-style:italic;}
+  .btn{ pointer-events:auto;cursor:pointer;margin-top:14px;padding:13px 34px;font-size:18px;font-weight:800;color:#141414;background:#ffd23f;border:none;border-radius:8px;box-shadow:0 4px 0 #a67c00;}
+  .btn:hover{ background:#ffe066;}
+  .btn.ghost{ background:transparent;color:#f2f2f2;border:2px solid #f2f2f2;box-shadow:none;}
+  .btn.ghost:hover{ background:rgba(255,255,255,.12);}
+  .btn.hidden{ display:none;}
+  .controls{ margin-top:22px;font-size:13.5px;color:#a8a8a8;line-height:1.8;}
+  .controls b{ color:#e8e8e8;}
+  #title-cash{ margin-top:8px;font-size:15px;color:#7ddc7d;font-weight:700;}
+  #end-text{ margin-top:12px;font-size:16px;color:#d8d8d8;max-width:520px;line-height:1.55;}
+  .foot{ position:fixed;bottom:12px;width:100%;text-align:center;font-size:12px;color:rgba(255,255,255,.45);z-index:11;pointer-events:none;}
+  @media (max-width:640px){
+    .overlay h1{ font-size:40px;}
+    #minimap{ width:120px;height:120px;}
+    #cash{ font-size:22px;}
+    #top-left{ max-width:260px;}
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="hud" id="top-left">
+  <div id="mission-title">Palm City Heat</div>
+  <div id="objective">Free roam — cause some chaos, or find a fare ($)</div>
+</div>
+<div class="hud" id="top-right">
+  <div id="cash">$0</div>
+  <div id="stars">☆☆☆☆☆☆</div>
+  <div id="health"><div id="health-fill"></div></div>
+  <div id="radio"></div>
+  <div id="hero"></div>
+</div>
+<div id="phone" class="hidden"><h3>LEONIDA SOCIAL</h3><div id="feed"></div></div>
+<canvas id="minimap" width="180" height="180"></canvas>
+<div id="speed"></div>
+<div id="ammo"></div>
+<div id="msg"></div>
+<div id="prompt"></div>
+<div id="crosshair"></div>
+<div class="overlay" id="screen-title">
+  <h1>PALM CITY <span class="heat">HEAT</span></h1>
+  <p class="tagline">An open-world crime game. Steal cars and bikes, outrun the Palm City PD, run fares, and pull off eleven jobs across Leonida — as Lucia and Jason.</p>
+  <p class="story">Lucia and Jason came back to Leonida with nothing but a name and a grudge. Marco gave them a car, a gun, and a plan.</p>
+  <button class="btn" id="btn-new">New Game</button>
+  <button class="btn ghost hidden" id="btn-continue">Continue</button>
+  <div id="title-cash"></div>
+  <div class="controls">
+    <b>WASD</b> move &nbsp;•&nbsp; <b>Shift</b> run &nbsp;•&nbsp; <b>Space</b> jump &nbsp;•&nbsp; <b>Click</b> shoot &nbsp;•&nbsp; <b>R</b> reload<br>
+    <b>E</b> enter / steal car &nbsp;•&nbsp; <b>W/S</b> drive, <b>A/D</b> steer &nbsp;•&nbsp; <b>Drag mouse</b> look around<br>
+    <b>Tab</b> switch Lucia / Jason &nbsp;•&nbsp; <b>Q</b> Leonida Social &nbsp;•&nbsp; <b>G</b> radio<br>
+    <b>P</b> / <b>Esc</b> pause &nbsp;•&nbsp; <b>M</b> mute &nbsp;•&nbsp; <b>1/2/3</b> weapons &nbsp;•&nbsp; <b>C</b> outfit at Safehouse<br>
+    <b>F</b> fish at the pier &nbsp;•&nbsp; <b>T</b> rain &nbsp;•&nbsp; <b>N</b> night &nbsp;•&nbsp; Progress saves automatically
+  </div>
+  <div class="foot">A fan-made original. Not affiliated with Rockstar Games or Grand Theft Auto.</div>
+</div>
+<div class="overlay hidden" id="screen-pause">
+  <h2>PAUSED</h2>
+  <p class="tagline">Palm City waits for no one — except right now.</p>
+  <button class="btn" id="btn-resume">Resume</button>
+  <button class="btn ghost" id="btn-quit">Quit to Title</button>
+</div>
+<div class="overlay hidden" id="screen-end">
+  <h2 id="end-title">BUSTED</h2>
+  <p id="end-text"></p>
+  <button class="btn" id="btn-end">Continue</button>
+</div>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
